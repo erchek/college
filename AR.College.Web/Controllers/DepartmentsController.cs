@@ -4,9 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using AR.College.Data.Context;
 using AR.College.Data.Models;
+using AR.College.Business.Interface;
 
 namespace AR.College.Web.Controllers
 {
@@ -14,18 +13,18 @@ namespace AR.College.Web.Controllers
     [ApiController]
     public class DepartmentsController : ControllerBase
     {
-        private readonly CollegeDbContext _context;
+        private readonly IDepartmentService _departmentService;
 
-        public DepartmentsController(CollegeDbContext context)
+        public DepartmentsController(IDepartmentService departmentService)
         {
-            _context = context;
+            _departmentService = departmentService;
         }
 
         // GET: api/Departments
         [HttpGet]
-        public IEnumerable<Department> GetDepartments()
+        public async Task<IEnumerable<Department>> GetDepartments()
         {
-            return _context.Departments;
+            return await _departmentService.GetAllAsync();
         }
 
         // GET: api/Departments/5
@@ -37,7 +36,7 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var department = await _context.Departments.FindAsync(id);
+            var department = await _departmentService.GetAsync(id);
 
             if (department == null)
             {
@@ -61,22 +60,10 @@ namespace AR.College.Web.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(department).State = EntityState.Modified;
-
-            try
+            bool isSuccess = await _departmentService.UpdateAsync(id, department);
+            if (!isSuccess)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!DepartmentExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound();
             }
 
             return NoContent();
@@ -91,10 +78,9 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            _context.Departments.Add(department);
-            await _context.SaveChangesAsync();
+            department = await _departmentService.AddAsync(department);
 
-            return CreatedAtAction("GetDepartment", new { id = department.Id }, department);
+            return Ok(department);
         }
 
         // DELETE: api/Departments/5
@@ -106,21 +92,14 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var department = await _context.Departments.FindAsync(id);
-            if (department == null)
+            bool isSuccess = await _departmentService.DeleteAsync(id);
+            if (!isSuccess)
             {
                 return NotFound();
             }
 
-            _context.Departments.Remove(department);
-            await _context.SaveChangesAsync();
-
-            return Ok(department);
+            return Ok();
         }
 
-        private bool DepartmentExists(int id)
-        {
-            return _context.Departments.Any(e => e.Id == id);
-        }
     }
 }

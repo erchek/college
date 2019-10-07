@@ -1,5 +1,6 @@
 using AR.College.Data.Context;
-using AR.College.Data.UoW;
+using AR.College.Business.Interface;
+using AR.College.Business.Implementation;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -36,9 +37,11 @@ namespace AR.College.Web
                     maxRetryDelay: TimeSpan.FromSeconds(10),
                     errorNumbersToAdd: null);
                 }));
-            services.AddSingleton<IUnitOfWork, UnitOfWork>();
-
-
+            
+            services.AddScoped<IDepartmentService, DepartmentService>();
+            services.AddScoped<ICourseService, CourseService>();
+            services.AddScoped<IFacultyService, FacultyService>();
+            services.AddScoped<IStudentService, StudentService>();
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
 

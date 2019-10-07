@@ -4,9 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using AR.College.Data.Context;
 using AR.College.Data.Models;
+using AR.College.Business.Interface;
 
 namespace AR.College.Web.Controllers
 {
@@ -14,18 +13,18 @@ namespace AR.College.Web.Controllers
     [ApiController]
     public class StudentsController : ControllerBase
     {
-        private readonly CollegeDbContext _context;
+        private readonly IStudentService _studentService;
 
-        public StudentsController(CollegeDbContext context)
+        public StudentsController(IStudentService studentService)
         {
-            _context = context;
+            _studentService = studentService;
         }
 
         // GET: api/Students
         [HttpGet]
-        public IEnumerable<Student> GetStudents()
+        public async Task<IEnumerable<Student>> GetStudents()
         {
-            return _context.Students;
+            return await _studentService.GetAllAsync();
         }
 
         // GET: api/Students/5
@@ -37,7 +36,7 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var student = await _context.Students.FindAsync(id);
+            var student = await _studentService.GetAsync(id);
 
             if (student == null)
             {
@@ -61,22 +60,10 @@ namespace AR.College.Web.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(student).State = EntityState.Modified;
-
-            try
+            bool isSuccess = await _studentService.UpdateAsync(id, student);
+            if (!isSuccess)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!StudentExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound();
             }
 
             return NoContent();
@@ -91,10 +78,9 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            _context.Students.Add(student);
-            await _context.SaveChangesAsync();
+            student = await _studentService.AddAsync(student);
 
-            return CreatedAtAction("GetStudent", new { id = student.Id }, student);
+            return Ok(student);
         }
 
         // DELETE: api/Students/5
@@ -106,21 +92,13 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var student = await _context.Students.FindAsync(id);
-            if (student == null)
+            bool isSuccess = await _studentService.DeleteAsync(id);
+            if (!isSuccess)
             {
                 return NotFound();
             }
 
-            _context.Students.Remove(student);
-            await _context.SaveChangesAsync();
-
-            return Ok(student);
-        }
-
-        private bool StudentExists(int id)
-        {
-            return _context.Students.Any(e => e.Id == id);
+            return Ok();
         }
     }
 }

@@ -4,9 +4,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using AR.College.Data.Context;
 using AR.College.Data.Models;
+using AR.College.Business.Interface;
 
 namespace AR.College.Web.Controllers
 {
@@ -14,18 +13,18 @@ namespace AR.College.Web.Controllers
     [ApiController]
     public class FacultiesController : ControllerBase
     {
-        private readonly CollegeDbContext _context;
+        private readonly IFacultyService _facultyService;
 
-        public FacultiesController(CollegeDbContext context)
+        public FacultiesController(IFacultyService facultyService)
         {
-            _context = context;
+            _facultyService = facultyService;
         }
 
         // GET: api/Faculties
         [HttpGet]
-        public IEnumerable<Faculty> GetFaculties()
+        public async Task<IEnumerable<Faculty>> GetFaculties()
         {
-            return _context.Faculties;
+            return await _facultyService.GetAllAsync();
         }
 
         // GET: api/Faculties/5
@@ -37,7 +36,7 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var faculty = await _context.Faculties.FindAsync(id);
+            var faculty = await _facultyService.GetAsync(id);
 
             if (faculty == null)
             {
@@ -61,22 +60,10 @@ namespace AR.College.Web.Controllers
                 return BadRequest();
             }
 
-            _context.Entry(faculty).State = EntityState.Modified;
-
-            try
+            bool isSuccess = await _facultyService.UpdateAsync(id, faculty);
+            if (!isSuccess)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!FacultyExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return NotFound();
             }
 
             return NoContent();
@@ -91,10 +78,9 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            _context.Faculties.Add(faculty);
-            await _context.SaveChangesAsync();
+            faculty = await _facultyService.AddAsync(faculty);
 
-            return CreatedAtAction("GetFaculty", new { id = faculty.Id }, faculty);
+            return Ok(faculty);
         }
 
         // DELETE: api/Faculties/5
@@ -106,21 +92,13 @@ namespace AR.College.Web.Controllers
                 return BadRequest(ModelState);
             }
 
-            var faculty = await _context.Faculties.FindAsync(id);
-            if (faculty == null)
+            bool isSuccess = await _facultyService.DeleteAsync(id);
+            if (!isSuccess)
             {
                 return NotFound();
             }
 
-            _context.Faculties.Remove(faculty);
-            await _context.SaveChangesAsync();
-
-            return Ok(faculty);
-        }
-
-        private bool FacultyExists(int id)
-        {
-            return _context.Faculties.Any(e => e.Id == id);
+            return Ok();
         }
     }
 }
